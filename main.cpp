@@ -3,6 +3,9 @@
 #include <string>
 using namespace std;
 
+
+
+
 class Edge {
 public:
     int weight;
@@ -26,24 +29,38 @@ public:
     int greenTime; 
     Edge* head;    
     Vertex* next;
-
+    Edge * tail;
     Vertex(char v) : id(v), greenTime(0), head(nullptr), next(nullptr) {}
     
     void addEdge(char end, int weight, bool isBlocked = false, bool underConstruction = false) 
     {
+
         Edge* newEdge = new Edge(id, end, weight);
+        
+        if(head==nullptr)
+        {
+            head=tail=newEdge;
+        }
+        else
+        {
         newEdge->isBlocked = isBlocked;
         newEdge->underConstruction = underConstruction;
-        newEdge->next = head;
-        head = newEdge;
+        tail->next=newEdge;
+        tail=newEdge;
+        // newEdge->next = head;
+        // head = newEdge;
+        }
+
+
     }
     void displayEdge(Edge * edge)
     {
         if(edge!=NULL)
         {
-                displayEdge(edge->next);
-                cout << edge->start << " -> " << edge->end << " (" << edge->weight << ") ";
+                
+                cout << edge->start << " -> " << edge->end << " (" << edge->weight << ") "<< "{ " << edge->NumOfVehicles << " } ";
                 edge = edge->next;
+                displayEdge(edge);
             
         }
             
@@ -60,13 +77,95 @@ public:
         : start(s), end(e), id(vehicleId), next(nullptr) {}
 };
 
+class D_Algo {
+public:
+    char vertex;
+    char parent;
+    int weight;
+    bool visited;
+    D_Algo* next;
+
+    // Constructor
+    D_Algo(char v, char p = '-', int w = INT_MAX, bool vis = false)
+        : vertex(v), parent(p), weight(w), visited(vis), next(nullptr) {}
+};
+
+class PathNode 
+{
+public:
+    char vertex;
+    PathNode* next;
+
+    PathNode(char v) : vertex(v), next(nullptr) {}
+};
+
+class Stack {
+public:
+
+    PathNode* top;
+    Stack() : top(nullptr) {}
+
+    ~Stack() {
+        while (top != nullptr) {
+            PathNode* temp = top;
+            top = top->next;
+            delete temp;
+        }
+    }
+
+    void push(char value) {
+        PathNode* newNode = new PathNode(value);
+        newNode->next = top;
+        top = newNode;
+    }
+
+    char pop() {
+        if (top == nullptr) {
+            cout << "Stack is empty! Cannot remove anything.\n";
+            return '\0';
+        }
+        char value = top->vertex;
+        PathNode* temp = top;
+        top = top->next;
+        delete temp;
+        return value;
+    }
+
+    bool FoundVertex(char value) {
+        PathNode* current = top;
+        while (current != nullptr) {
+            if (current->vertex == value) {
+                return true;
+            }
+            current = current->next;
+        }
+        return false;
+    }
+
+    bool stackIsEmpty() {
+        return top == nullptr;
+    }
+
+    void DisplayStck(PathNode * root) {
+        if(root==nullptr)
+        {
+            cout << endl; 
+            return;
+        }
+        DisplayStck(root->next);
+        cout << root->vertex << " ";
+
+
+    }
+};
 
 class Graph 
 {
 private:
     Vertex* head;
-    Vertex * tail;
+    Vertex* tail;
     VehicalNode* Vhead;
+    D_Algo * PathHead;
 
     Vertex* getVertex(char id) 
     {
@@ -245,13 +344,13 @@ void Vehicles(const string& filename)//FILE READ 4
             if (line[j] == ',' || line[j] == '\0') {
                 switch (tokenIndex) {
                     case 0:
-                        startVertexStr = currentToken;
+                        VehicleIdStr = currentToken;
                         break;
                     case 1:
-                        endVertexStr = currentToken;
+                        startVertexStr = currentToken;
                         break;
                     case 2:
-                        VehicleIdStr = currentToken;
+                         endVertexStr = currentToken;
                         break;
                 }
                 tokenIndex++;
@@ -265,14 +364,47 @@ void Vehicles(const string& filename)//FILE READ 4
         string Vid = VehicleIdStr; 
 
         insertVehicleAtHead(startVertex, endVertex, Vid);
-    Vertex * temp=getVertex(startVertex);
+
+        // Vertex * temp=getVertex(startVertex);
+        //     Edge * e=temp->head;
+        //     while (e!=NULL)
+        //     {
+        //         if(e->end==startVertex+1)
+        //         {
+        //             e->NumOfVehicles+=1;
+        //             break;
+        //         }
+        //         e=e->next;
+        //     }
+
+  
     }
 
     file.close();
 }
 
 public:
-    Graph() : head(nullptr), tail(nullptr),Vhead(nullptr) {}
+    Graph() : head(nullptr), tail(nullptr),Vhead(nullptr) 
+    {
+        loadRoadNetwork("road_network.csv","road_closures.csv","traffic_signals.csv","vehicles.csv");
+        PathHead=nullptr;
+        Vertex * temp=head;
+        while(temp!=nullptr)
+        {
+            insertAtHead_DAlgo(temp->id);
+            temp=temp->next;
+        }
+    }
+    void printD_AlgoPath()
+    {
+        D_Algo * temp=PathHead;
+        while(temp!=nullptr)
+        {
+            if(temp->weight!=INT_MAX)
+                cout<< "Vertex: "<<temp->vertex<<" Parent: "<<temp->parent << " Weight: " << temp->weight <<endl;
+            temp=temp->next;
+        }
+    }
 
     Vertex* getHead()
     {
@@ -282,11 +414,173 @@ public:
     void addVertexHead(char id) {
         if (!getVertex(id)) {
             Vertex* newVertex = new Vertex(id);
-            newVertex->next = head;
-            head = newVertex;
+            if(head==nullptr)
+            {
+                head=tail=newVertex;
+            }
+            else
+            {
+                tail->next=newVertex;
+                tail=newVertex;
+            }
+            // newVertex->next = head;
+            // head = newVertex;
         }
     }
+    void InsertVehicleOnEdge()
+    {
+        VehicalNode * temp=Vhead;
+        while(temp!=nullptr)
+        {
     
+            run_dijkstra(temp->start,temp->end); D_Algo* x=getNodeOfDAlgoPath(temp->end, PathHead);
+            string str=ShortestPath(temp->end, temp->end+to_string(x->weight),x);
+            Vertex * temp=getVertex(str[0]);
+            Edge * e=temp->head;
+            while (e!=NULL)
+            {
+                if(e->end==str[1])
+                {
+                    e->NumOfVehicles+=1;
+                }
+                e=e->next;
+            }
+            temp=temp->next;
+
+        }
+    }
+    void displayVehicals()
+    {
+        VehicalNode*temp=Vhead;
+        while(temp!=NULL)
+        {
+            cout<<temp->start<<" "<<temp->end<<" "<<temp->id<<" "<<endl;
+            temp=temp->next;
+        }
+
+    }
+
+    void insertAtHead_DAlgo(char v)
+    {
+        D_Algo* newD = new D_Algo(v);
+        newD->next=PathHead;
+        PathHead=newD;
+    }
+
+    D_Algo* getNodeOfDAlgoPath(char v, D_Algo* root)//helper funcuuu
+    {
+        if(root==nullptr)
+        {
+            return nullptr;
+        }
+        else
+        {
+            if(root->vertex==v)
+            {
+                return root;
+            }
+            else
+            {
+                return getNodeOfDAlgoPath(v,root->next);
+            }
+        }
+    }
+    void run_dijkstra(char strV,char endV)
+    {
+        D_Algo * temp=PathHead;
+        while(temp!=nullptr)
+        {
+            temp->parent='-';
+            temp->weight=INT_MAX;
+            temp->visited=0;
+            temp=temp->next;
+        }
+        D_Algo*source=getNodeOfDAlgoPath(strV,PathHead);
+        source->weight=0;
+        dijkstra_algorithm(findMinUnvisited(PathHead),endV);
+        D_Algo* x=getNodeOfDAlgoPath(endV, PathHead);
+        string str=ShortestPath(endV, endV+to_string(x->weight),x);
+        cout <<  str <<  endl;
+    
+    }
+
+    void dijkstra_algorithm (D_Algo *root,char destination)
+    {
+        if(root==nullptr)
+        {
+            return;
+        }
+    if (root->vertex == destination) {
+        root->visited = true; // Mark the endpoint as visited
+        return;
+    }
+            char v=root->vertex;
+            Vertex* vertex=getVertex(v);
+            Edge *temp=vertex->head;
+            while(temp!=nullptr )
+            {
+                if(temp->isBlocked==1 )//|| temp->underConstruction==1
+                {
+                    temp=temp->next;
+                    continue;
+                }
+                int w=temp->weight;
+                D_Algo * AdjNode=getNodeOfDAlgoPath(temp->end,PathHead);
+                if(AdjNode->weight>(root->weight)+(w))
+                {
+                    AdjNode->weight=(root->weight)+(w);
+                    AdjNode->parent=v;    
+                }
+                temp=temp->next;
+                // if(temp->end==destination)
+                // {
+
+                // }
+            }
+            root->visited=1;
+            D_Algo* x=findMinUnvisited(PathHead);
+            dijkstra_algorithm(x,destination);
+    }
+
+    string ShortestPath(char endV,string str,D_Algo*root)
+    {
+        if(root->parent=='-')
+        {
+            return str;    
+        }
+        if(root==nullptr)
+        {
+            return "";
+        }
+        else
+        {
+            str=root->parent+str;
+            D_Algo*next=getNodeOfDAlgoPath(root->parent,PathHead);
+            return ShortestPath(root->parent,str,next);
+        }
+    }
+
+    D_Algo* findMinUnvisited(D_Algo* head) {
+        if (head == nullptr) {
+            return nullptr; 
+        }
+
+        D_Algo* current = head;
+        D_Algo* minNode = nullptr;
+        int minWeight = INT_MAX; 
+
+        while (current != nullptr) {
+            if (!current->visited && current->weight < minWeight) 
+            {
+                minWeight = current->weight;
+                minNode = current;
+            }
+            current = current->next;
+        }
+
+        return minNode;
+    }
+
     void addVertex(char id) {
     if (!getVertex(id)) {
         Vertex* newVertex = new Vertex(id);
@@ -360,10 +654,13 @@ public:
         }
         else
         {
-            displayGraph(root->next); 
+            
             cout << "Vertex " << root->id << ": ";
             root->displayEdge(root->head);
             cout << "\n";
+
+            displayGraph(root->next); 
+            
               
         }
     }
@@ -382,49 +679,33 @@ public:
         }
     }
 
-    void loadRoadNetwork(const string& filename,const string& filename2 ,const string& filename3) //FILE READINGS
+    void loadRoadNetwork(const string& filename,const string& filename2 ,const string& filename3,const string& filename4) //FILE READINGS
     {
         RoadNetwork(filename);
         RoadClosure(filename2);
         GreenTime(filename3);
+        Vehicles(filename4);
+
 
     }
 
-    void blockRoad()
-    {
-        char S,E;
-        do{
-        cout<<"Enter the start and End vertex : ";
-        cin>>S>>E;
-        }
-        while((S<'A' && S>'Z') && (E<'A' && E>'Z'));
-        if(updateEdgeStatus(S,E,1,0))
-        {
-            cout<< "Blocked the road from "<<S<<" to "<<E<<endl;
-        }
-        else
-        {
-            cout<< "Road not found from "<<S<<" to "<<E<<endl;
-        }
-        
-    
-    }
+
+
 };
-
 int main() {
     int x=0;
     Graph cityGraph;
 
-    cityGraph.loadRoadNetwork("road_network.csv","road_closures.csv","traffic_signals.csv");
+    //cityGraph.loadRoadNetwork("road_network.csv","road_closures.csv","traffic_signals.csv");
 
-    cityGraph.displayBlockedRoads();
-    cout<<"-----------------------------------------------------\n";
-    cityGraph.displayGraph(cityGraph.getHead());
-    cout<<"-----------------------------------------------------\n";
-    cityGraph.blockRoad();
-    cityGraph.displayBlockedRoads();
-    cout<<"-----------------------------------------------------\n";
-    cityGraph.displayGreenTime(cityGraph.getHead());
+    // cityGraph.displayBlockedRoads();
+    // cout<<"-----------------------------------------------------\n";
+    // cityGraph.displayGraph(cityGraph.getHead());
+    // cout<<"-----------------------------------------------------\n";
+    // cityGraph.blockRoad();
+    // cityGraph.displayBlockedRoads();
+    // cout<<"-----------------------------------------------------\n";
+    // cityGraph.displayGreenTime(cityGraph.getHead());
 
     return 0;
 }
