@@ -158,7 +158,6 @@ public:
 
     }
 };
-
 class Graph 
 {
 private:
@@ -689,23 +688,141 @@ public:
 
     }
 
+    void blockRoad()
+    {
+        char S,E;
+        do{
+        cout<<"Enter the start and End vertex : ";
+        cin>>S>>E;
+        }
+        while((S<'A' && S>'Z') && (E<'A' && E>'Z'));
+        if(updateEdgeStatus(S,E,1,0))
+        {
+            cout<< "Blocked the road from "<<S<<" to "<<E<<endl;
+        }
+        else
+        {
+            cout<< "Road not found from "<<S<<" to "<<E<<endl;
+        }
+        
+    
+}
+void DFS(Vertex * root,char end,Stack& stck,int weight)
+{
+    if(root==nullptr)
+    {
+        return;
+    }
+    if(!stck.FoundVertex(root->id)) 
+    {
+        stck.push(root->id); 
+    }
 
+    if(stck.FoundVertex(end))        
+    {
+        stck.DisplayStck(stck.top);
+        cout<<"--->  "<< weight;
+        return;
+    }
+    
+    Edge * adj=root->head;
+    while(adj!=nullptr)
+    {
+        if(!stck.FoundVertex(adj->end))
+        {
+            DFS(getVertex(adj->end),end,stck,weight+adj->weight);
+            stck.pop();
+        }
+        adj=adj->next;   
+    }
+}
+void DisplayAllPossiblePaths(char start, char end)
+{
+    Vertex * Node =  getVertex(start);
+    Stack stck;
+    DFS(Node,end,stck,0);
+}
+
+    void menu() {
+    int choice;
+    while (true) {
+        cout << "Enter your choice: " << endl;
+        cout << "1: Display Graph." << endl;
+        cout << "2: Display Blocked Roads" << endl;
+        cout << "3: Display Green Time" << endl;
+        cout << "4: Block a road Manually" << endl;
+        cout << "5: Print the shortest path between 2 points" << endl;
+        cout << "6: Display All Possible Paths" << endl;
+        cout << "7: Exit" << endl;
+        cin >> choice;
+
+        if (choice < 1 || choice > 7) {
+            cout << "Invalid choice. Please select a valid option.\n";
+            continue;
+        }
+
+        if (choice == 1) {
+            displayGraph(head);
+        } else if (choice == 2) {
+            displayBlockedRoads();
+        } else if (choice == 3) {
+            displayGreenTime(head);
+        } else if (choice == 4) {
+            blockRoad();
+        } else if (choice == 5) {
+            char start, end;
+            cout << "Enter the start vertex: ";
+            cin >> start;
+            cout << "Enter the end vertex: ";
+            cin >> end;
+            run_dijkstra(start, end);
+            printD_AlgoPath();
+        } else if (choice == 6) {
+            char start, end;
+            cout << "Enter the start vertex: ";
+            cin >> start;
+            cout << "Enter the end vertex: ";
+            cin >> end;
+            DisplayAllPossiblePaths(start, end);
+        } else if (choice == 7) {
+            cout << "Exiting program.\n";
+            return;
+        }
+    }
+}
 
 };
-int main() {
-    int x=0;
+
+int main() 
+{
     Graph cityGraph;
-
-    //cityGraph.loadRoadNetwork("road_network.csv","road_closures.csv","traffic_signals.csv");
-
     // cityGraph.displayBlockedRoads();
+    cityGraph.InsertVehicleOnEdge();
     // cout<<"-----------------------------------------------------\n";
-    // cityGraph.displayGraph(cityGraph.getHead());
-    // cout<<"-----------------------------------------------------\n";
+    cityGraph.displayGraph(cityGraph.getHead());
+    cout<<"-----------------------------------------------------\n";
     // cityGraph.blockRoad();
     // cityGraph.displayBlockedRoads();
     // cout<<"-----------------------------------------------------\n";
     // cityGraph.displayGreenTime(cityGraph.getHead());
+    // cout<<"-----------------------------------------------------\n";
+    // cityGraph.printD_AlgoPath();
+    // cout<<"-----------------------------------------------------\n";
 
-    return 0;
+
+                    
+                    // cityGraph.displayGraph(cityGraph.getHead());
+
+
+
+    // cityGraph.run_dijkstra('A','F');
+    // // cityGraph.findAllPaths('A','F');
+    // cout<<"-----------------------------------------------------\n";
+    // cityGraph.DisplayAllPossiblePaths('A','F');
+
+    // cityGraph.menu();
+    cityGraph.displayVehicals();
+    cout<<"\n-------------------"<<endl;
+    cityGraph.displayVehicals();
+return 0;
 }
