@@ -4,7 +4,31 @@
 using namespace std;
 
 
+// Remove numbers from path
+string formatPath(const string& path){
+    string formattedPath = path;
+    for (char &c : formattedPath)
+    {
+        if (isdigit(c))
+        {
+            c = ' ';
+        }
+    }
+    return formattedPath;
+}
 
+class VehicalNode {
+public:
+    char start;
+    char end;
+    string id;
+    VehicalNode* next;
+    string path;
+
+    VehicalNode(char s, char e, const string& vehicleId,const string& path = "")
+        : start(s), end(e), id(vehicleId), next(nullptr),path(path) {}
+    
+};
 
 class Edge {
 public:
@@ -13,14 +37,55 @@ public:
     bool isBlocked;
     bool underConstruction;
     Edge* next;
-    int NumOfVehicles; //added
+    int NumOfVehicles;
+    VehicalNode* vehicals;
 
-    Edge(char s, char e, int w) : start(s), end(e), weight(w), isBlocked(false), underConstruction(false), next(nullptr),NumOfVehicles(0){}
+    Edge(char s, char e, int w) : start(s), end(e), weight(w), isBlocked(false), underConstruction(false), next(nullptr),NumOfVehicles(0),vehicals(nullptr){}
 
-    void IncreamentVehicles()
-    {
-        NumOfVehicles+=1;
+    // function to add vehicle as an object in edge with its shortest path
+    void addVehicle(const string& vehicleID , const string& path){
+        VehicalNode* newVehicle = new VehicalNode(path[0],path[path.length()-1],vehicleID,path);
+        if(vehicals == nullptr){
+            vehicals = newVehicle;
+        }
+        else{
+            VehicalNode *temp = vehicals;
+            while (temp->next != nullptr)
+            {
+                temp = temp->next;
+            }
+            temp->next = newVehicle;
+        }
+        NumOfVehicles++;
     }
+
+    VehicalNode* removeVehicle(const string& vehicleID){
+        VehicalNode *temp = vehicals;
+        VehicalNode *prev = nullptr;
+        while (temp != nullptr)
+        {
+            if (temp->id == vehicleID)
+            {
+                if (prev == nullptr)
+                {
+                    vehicals = temp->next;
+                }
+                else
+                {
+                    prev->next = temp->next;
+                }
+                NumOfVehicles--;
+                return temp;
+            }
+            prev = temp;
+            temp = temp->next;
+        }
+        return nullptr;
+
+    }
+
+
+    
 };
 
 class Vertex {
@@ -55,27 +120,17 @@ public:
     }
     void displayEdge(Edge * edge)
     {
-        if(edge!=NULL)
-        {
+        if(edge!=NULL){
                 
-                cout << edge->start << " -> " << edge->end << " (" << edge->weight << ") "<< "{ " << edge->NumOfVehicles << " } ";
-                edge = edge->next;
-                displayEdge(edge);
+            cout << edge->start << " -> " << edge->end << " (" << edge->weight << ") "<< "{ " << edge->NumOfVehicles << " } ";
+            edge = edge->next;
+            displayEdge(edge);
             
         }
             
     }
 };
-class VehicalNode {
-public:
-    char start;
-    char end;
-    string id;
-    VehicalNode* next;
 
-    VehicalNode(char s, char e, const string& vehicleId)
-        : start(s), end(e), id(vehicleId), next(nullptr) {}
-};
 
 class D_Algo {
 public:
@@ -155,9 +210,139 @@ public:
         DisplayStck(root->next);
         cout << root->vertex << " ";
 
-
     }
 };
+
+class Max_Heap {
+    Edge* heap[100];
+    int size;
+
+    void swap(int i, int j) {
+        Edge* temp = heap[i];
+        heap[i] = heap[j];
+        heap[j] = temp;
+    }
+
+    Edge* getEdge(char s, char e) {
+        for (int i = 0; i < size; i++) {
+            if (heap[i]->start == s && heap[i]->end == e) {
+                return heap[i];
+            }
+        }
+        return nullptr;
+    }
+
+    int parent(int i) { return (i - 1) / 2; }
+    int leftChild(int i) { return 2 * i + 1; }
+    int rightChild(int i) { return 2 * i + 2; }
+
+    void heapifyUp(int i) {
+        while (i > 0 && heap[parent(i)]->NumOfVehicles < heap[i]->NumOfVehicles) {
+            swap(i, parent(i));
+            i = parent(i);
+        }
+    }
+
+    void heapifyDown(int i) {
+        int largest = i;
+        int left = leftChild(i);
+        int right = rightChild(i);
+
+        if (left < size && heap[left]->NumOfVehicles > heap[largest]->NumOfVehicles) {
+            largest = left;
+        }
+
+        if (right < size && heap[right]->NumOfVehicles > heap[largest]->NumOfVehicles) {
+            largest = right;
+        }
+
+        if (largest != i) {
+            swap(i, largest);
+            heapifyDown(largest);
+        }
+    }
+
+public:
+    Max_Heap() {
+        for (int i = 0; i < 100; i++) {
+            heap[i] = nullptr;
+        }
+        size = 0;
+    }
+
+    bool processed() {
+        for(int i=0;i<size;i++){
+            VehicalNode* vs = heap[i]->vehicals;
+            while (vs){
+                if(vs->path.length() > 1){
+                    return false;
+                }
+                vs = vs->next;
+            }
+        }
+        return true;
+    }
+
+    void addEdge(Edge* edge) {
+        if (size >= 100) {
+            return;
+        }
+        heap[size] = edge;
+        heapifyUp(size);
+        size++;
+    }
+
+    Edge* extractMax() {
+        if (size == 0) {
+            return nullptr;
+        }
+        Edge* maxEdge = heap[0];
+        heap[0] = heap[size - 1];
+        // size--;
+        heapifyDown(0);
+        return maxEdge;
+    }
+
+    void routeVehicles() {
+        if (size <= 0) {
+            
+            return;
+        }
+        Edge* maxEdge = extractMax();
+        //cout<<maxEdge->start<< " "<<maxEdge->end<<endl;
+        moveAllVehicles(maxEdge);
+    }
+
+    void moveVehicle(Edge* e1, VehicalNode* vehicle) {
+        Edge* edge2 = getEdge(vehicle->path[1], vehicle->path[2]);
+        if (edge2 == nullptr) {
+            return;
+        }
+        VehicalNode* v = e1->removeVehicle(vehicle->id);
+        vehicle->path = vehicle->path.substr(1);
+        edge2->addVehicle(vehicle->id, vehicle->path);
+    }
+
+    void moveAllVehicles(Edge* edge) {
+        VehicalNode* vehicles = edge->vehicals;
+        while (vehicles) {
+            if (vehicles->path.length() < 2) {
+                vehicles = vehicles->next;
+                continue;
+            }
+            moveVehicle(edge, vehicles);
+            vehicles = vehicles->next;
+        }
+    }
+
+    void printHeap() {
+        for (int i = 0; i < size; i++) {
+            cout << heap[i]->start << " " << heap[i]->end << " " << heap[i]->NumOfVehicles << " Index: " << i << " Parent: " << parent(i) << endl;
+        }
+    }
+};
+
+
 class Graph 
 {
 private:
@@ -165,6 +350,7 @@ private:
     Vertex* tail;
     VehicalNode* Vhead;
     D_Algo * PathHead;
+    Max_Heap heap;
 
     Vertex* getVertex(char id) 
     {
@@ -405,6 +591,35 @@ public:
         }
     }
 
+    void feedMaxHeap(){
+        Vertex* v = head;
+        while (v){
+            Edge* edges = v->head;
+            while (edges) {
+                heap.addEdge(edges);
+                edges = edges->next;
+            }
+            v = v->next;
+        }
+    }
+    void displayHeap(){
+        heap.printHeap();
+    }
+
+    void routeVehicles(){
+
+        displayVehiclesOnEdges();
+        cout<<"\n-------------------"<<endl;
+        heap.routeVehicles();
+        if(heap.processed()){
+            return;
+        }
+        else
+            routeVehicles();
+
+        
+    }
+
     Vertex* getHead()
     {
         return this->head;
@@ -432,15 +647,18 @@ public:
         while(temp!=nullptr)
         {
     
-            run_dijkstra(temp->start,temp->end); D_Algo* x=getNodeOfDAlgoPath(temp->end, PathHead);
+            run_dijkstra(temp->start,temp->end);
+            
+            D_Algo* x=getNodeOfDAlgoPath(temp->end, PathHead);
             string str=ShortestPath(temp->end, temp->end+to_string(x->weight),x);
-            Vertex * temp=getVertex(str[0]);
-            Edge * e=temp->head;
+            Vertex * vertex=getVertex(str[0]);
+            Edge * e=vertex->head;
             while (e!=NULL)
             {
                 if(e->end==str[1])
-                {
-                    e->NumOfVehicles+=1;
+                {   
+                    e->addVehicle(temp->id,formatPath(str));
+                    break;
                 }
                 e=e->next;
             }
@@ -453,10 +671,29 @@ public:
         VehicalNode*temp=Vhead;
         while(temp!=NULL)
         {
-            cout<<temp->start<<" "<<temp->end<<" "<<temp->id<<" "<<endl;
+            cout<<temp->start<<" "<<temp->end<<" "<<temp->id<<" "<<temp->path<<endl;
             temp=temp->next;
         }
 
+    }
+    void displayVehiclesOnEdges(){
+        Vertex *temp = head;
+        while (temp != nullptr)
+        {
+            Edge *e = temp->head;
+            while (e != nullptr)
+            {
+                cout << temp->id << " " << e->end << " " << e->NumOfVehicles << " ";
+                VehicalNode* v_on_edge = e->vehicals;
+                while (v_on_edge != nullptr){
+                    cout << v_on_edge->id << " " << v_on_edge->path << " ";
+                    v_on_edge = v_on_edge->next;
+                }
+                e = e->next;
+                cout << endl;
+            }
+            temp = temp->next;
+        }
     }
 
     void insertAtHead_DAlgo(char v)
@@ -499,7 +736,6 @@ public:
         dijkstra_algorithm(findMinUnvisited(PathHead),endV);
         D_Algo* x=getNodeOfDAlgoPath(endV, PathHead);
         string str=ShortestPath(endV, endV+to_string(x->weight),x);
-        cout <<  str <<  endl;
     
     }
 
@@ -595,8 +831,17 @@ public:
     void insertVehicleAtHead(char start, char end, const string& vehicleId) 
     {
         VehicalNode* newNode = new VehicalNode(start, end, vehicleId);
-        newNode->next = Vhead;
-        Vhead = newNode;
+        if (Vhead == nullptr)
+        {
+            Vhead = newNode;
+        }
+        else{
+            VehicalNode* temp = Vhead;
+            while (temp->next != nullptr){
+                temp = temp->next;
+            }
+            temp->next = newNode;
+        }
     }
 
     void addEdge(char start, char end, int weight, bool isBlocked = false, bool underConstruction = false) 
@@ -628,6 +873,24 @@ public:
             }
         }
         return 0;
+    }
+
+    void displayCongestion(){
+        Vertex *vertexes = head;
+        
+        while (vertexes){
+            int n = 0;
+            Edge *edge = vertexes->head;
+            while (edge)
+            {
+                n+=edge->NumOfVehicles;
+                edge = edge->next;
+            }
+            
+            cout<<"Vertex "<<vertexes->id<<" "<<n<<endl;
+            vertexes = vertexes->next;
+        }
+        
     }
 
     void displayBlockedRoads() {
@@ -799,7 +1062,8 @@ int main()
     // cityGraph.displayBlockedRoads();
     cityGraph.InsertVehicleOnEdge();
     // cout<<"-----------------------------------------------------\n";
-    cityGraph.displayGraph(cityGraph.getHead());
+    //cityGraph.displayGraph(cityGraph.getHead());
+    //cityGraph.menu();
     cout<<"-----------------------------------------------------\n";
     // cityGraph.blockRoad();
     // cityGraph.displayBlockedRoads();
@@ -808,12 +1072,8 @@ int main()
     // cout<<"-----------------------------------------------------\n";
     // cityGraph.printD_AlgoPath();
     // cout<<"-----------------------------------------------------\n";
-
-
-                    
-                    // cityGraph.displayGraph(cityGraph.getHead());
-
-
+           
+    // cityGraph.displayGraph(cityGraph.getHead());
 
     // cityGraph.run_dijkstra('A','F');
     // // cityGraph.findAllPaths('A','F');
@@ -821,8 +1081,18 @@ int main()
     // cityGraph.DisplayAllPossiblePaths('A','F');
 
     // cityGraph.menu();
-    cityGraph.displayVehicals();
+    //cityGraph.displayVehicals();
+    //cityGraph.displayVehiclesOnEdges();
     cout<<"\n-------------------"<<endl;
-    cityGraph.displayVehicals();
+    //cityGraph.displayCongestion();
+    //cityGraph.displayVehicals();
+    cityGraph.feedMaxHeap();
+    //cityGraph.displayHeap();
+    //cityGraph.displayCongestion();
+    cityGraph.routeVehicles();
+    //cityGraph.displayVehiclesOnEdges();
+    cout<<"---------------------"<<endl;
+    //cityGraph.displayCongestion();
+    
 return 0;
 }
